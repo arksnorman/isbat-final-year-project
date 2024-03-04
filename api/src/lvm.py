@@ -1,29 +1,83 @@
-import re
 import subprocess
+import time
+from src.utils import calculate_md5
 
 
-def check_vg_space(vg_name, lv_size):
+def restore_snapshot(vg, snapshot_name, original_lv_name):
     try:
-        cmd = ['vgdisplay', '--units', 'b', '--noheadings', '--nosuffix', vg_name]
-        vgdisplay_output = subprocess.check_output(cmd).decode('utf-8')
+        subprocess.run(["lvconvert", "--mergesnapshot", f"{vg}/{snapshot_name}"], check=True)
+        subprocess.run(["lvchange", "--refresh", f"{vg}/{original_lv_name}"], check=True)
+        return True, None
+    except Exception as e:
+        return False, f"Error restoring snapshot: {e}"
 
-        # Extract the total size and free size of the volume group from the output
-        total_size_match = re.search(r"VG Size\s+(\d+)\s", vgdisplay_output)
-        free_size_match = re.search(r"Free\s+\d+\s+(\d+)\s", vgdisplay_output)
 
-        if total_size_match and free_size_match:
-            total_size = int(total_size_match.group(1))
-            free_size = int(free_size_match.group(1))
-            lv_size_bytes = convert_size_to_bytes(lv_size)
+def get_snapshots(lv):
+    try:
+        cmd = ['lvs', '--units', 'g', '--noheadings', '--nosuffix', '--separator', '#', '-o', 'lv_name,lv_path,lv_size,lv_time,origin']
+        output = subprocess.check_output(cmd).decode('utf-8')
 
-            if lv_size_bytes <= free_size:
-                return True
-            else:
-                print("Error: Not enough free space in the volume group.")
-                return False
-        else:
-            print("Error: Failed to retrieve volume group information.")
+        lvs_lines = output.strip().split('\n')
+
+        logical_volumes = []
+
+        for line in lvs_lines:
+            if len(line.strip()) == 0:
+                continue
+
+            fields = line.strip().split("#")
+            lv_name, lv_path, lv_size, lv_time, origin = fields
+
+            if len(origin.strip()) > 0 and lv == origin.strip():
+                logical_volumes.append({
+                    'name': lv_name.strip(),
+                    'path': lv_path.strip(),
+                    'size': lv_size.strip(),
+                    "time": lv_time.strip(),
+                    "origin": origin.strip(),
+                })
+
+        return True, logical_volumes
+    except Exception as e:
+        return False, str(e)
+
+
+def create_snapshot(vg, lv):
+    try:
+        lv_info = get_logical_volume_details(vg, lv)
+        success, data = lv_info
+
+        if not success:
+            return False, data
+
+        size = str(int(float(data["size"]) * 1024)) + "M"
+
+        if not has_enough_space(vg, size):
+            return False, "Not enough space on storage pool"
+        snapshot_name = calculate_md5(str(time.time()))
+        subprocess.run(["lvcreate", "--snapshot", "--name", snapshot_name, "--size", size, f"{vg}/{lv}"], check=True)
+        return True, None
+    except Exception as e:
+        return False, f"Error creating snapshot: {str(e)}"
+
+
+def has_enough_space(vg_name, lv_size):
+    try:
+        cmd = ['vgs', '--units', 'b', '--noheadings', '--nosuffix', '--separator', ':', '-o', 'vg_size,vg_free', vg_name]
+        output = subprocess.check_output(cmd).decode('utf-8')
+        output = output.strip()
+
+        if len(output) == 0:
             return False
+
+        fields = output.split(":")
+        free_size = int(fields[1])
+
+        lv_size_bytes = convert_size_to_bytes(lv_size)
+
+        if lv_size_bytes <= free_size:
+            return True
+        return True
     except subprocess.CalledProcessError:
         print("Error: Failed to retrieve volume group information.")
         return False
@@ -41,7 +95,7 @@ def convert_size_to_bytes(size):
     """
     units = {'K': 1024, 'M': 1024 ** 2, 'G': 1024 ** 3, 'T': 1024 ** 4}
     unit = size[-1]
-    if unit in units:
+    if str(unit).upper() in units.keys():
         return int(size[:-1]) * units[unit]
     else:
         return int(size)
@@ -55,9 +109,17 @@ def create_logical_volume(vg_name, lv_name, lv_size):
         return False, str(e)
 
 
+def delete_logical_volume_forcefully(vg_name, lv_name):
+    try:
+        subprocess.run(['lvremove', '--force', '/dev/' + vg_name + '/' + lv_name], check=True)
+        return True, None
+    except subprocess.CalledProcessError as e:
+        return False, str(e)
+
+
 def get_logical_volumes(vg_name):
     try:
-        cmd = ['lvs', '--units', 'b', '--noheadings', '--nosuffix', '--separator', '|', '-o', 'lv_name,lv_path,lv_size,lv_attr']
+        cmd = ['lvs', '--units', 'g', '--noheadings', '--nosuffix', '--separator', '#', '-o', 'lv_name,lv_path,lv_size,lv_time,origin']
         lvs_output = subprocess.check_output(cmd).decode('utf-8')
 
         lvs_lines = lvs_output.strip().split('\n')
@@ -65,24 +127,42 @@ def get_logical_volumes(vg_name):
         logical_volumes = []
 
         for line in lvs_lines:
-            # Split the line into fields
-            fields = line.strip().split('|')
-            # Extract logical volume name, path, size, and attributes
-            lv_name = fields[0].strip()
-            lv_path = fields[1].strip()
-            lv_size = int(fields[2].strip())
-            lv_attr = fields[3].strip()
-            # Calculate disk usage
-            lv_disk_usage = lv_size if 's' not in lv_attr else 0
-            # Append LV information to the list
-            logical_volumes.append({
-                'name': lv_name,
-                'path': lv_path,
-                'size': lv_size,
-                'disk_usage': lv_disk_usage
-            })
+            if len(line.strip()) == 0:
+                continue
+
+            fields = line.strip().split("#")
+            lv_name, lv_path, lv_size, lv_time, origin = fields
+
+            if len(origin.strip()) == 0:
+                logical_volumes.append({
+                    'name': lv_name.strip(),
+                    'path': lv_path.strip(),
+                    'size': lv_size.strip(),
+                    "time": lv_time.strip(),
+                    "origin": origin.strip(),
+                })
 
         return True, logical_volumes
+    except subprocess.CalledProcessError as e:
+        return False, str(e)
+
+
+def get_logical_volume_details(vg_name, lv):
+    try:
+        cmd = ['lvs', '--units', 'g', '--noheadings', '--nosuffix', '--separator', '#', '-o', 'lv_name,lv_path,lv_size,lv_time,origin', f"{vg_name}/{lv}"]
+        output = subprocess.check_output(cmd).decode('utf-8')
+        output = output.strip()
+
+        fields = output.split("#")
+        lv_name, lv_path, lv_size, lv_time, origin = fields
+
+        return True, {
+            'name': lv_name.strip(),
+            'path': lv_path.strip(),
+            'size': lv_size.strip(),
+            "time": lv_time.strip(),
+            "origin": origin.strip(),
+        }
     except subprocess.CalledProcessError as e:
         return False, str(e)
 
@@ -97,7 +177,7 @@ def create_volume_group(vg_name: str, devices: list):
 
 def extend_volume_group(vg_name, devices: list):
     try:
-        subprocess.run(['vgextend', vg_name] + list(devices), check=True)
+        subprocess.run(['vgextend', vg_name] + list(set(devices)), check=True)
         return True, None
     except subprocess.CalledProcessError as e:
         return False, str(e)
