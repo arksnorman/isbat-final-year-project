@@ -1,45 +1,54 @@
-from flask import Flask, jsonify, request
+import time
 
-from src.lvm import create_volume_group, delete_volume_group_forcefully, extend_volume_group
-from src.utils import list_unused_block_devices, get_all_lvm_info, get_data
+from flask import Flask, jsonify, request
+from src.BlockStorage import BlockStorage
+from src.StoragePool import StoragePool
+from src.Snapshots import Snapshots
 from flask_cors import CORS
+
+from src.utils import list_unused_block_devices
 
 app = Flask(__name__)
 
 CORS(app, origins='*')
 
+storage_pools = StoragePool()
+block_storage = BlockStorage()
+snapshots = Snapshots()
+
 
 @app.route("/storage-pools", methods=["GET", "POST", "DELETE", "PUT"])
 def get_all_storage_pools():
     try:
-        data = get_data(request)
-        if request.method.upper() == "PUT":
-            success, msg = extend_volume_group(data["name"], list(data["blockDevices"]))
-            if success:
-                return jsonify({}), 204
-            return jsonify(msg), 500
-        if request.method.upper() == "DELETE":
-            success, msg = delete_volume_group_forcefully(list(data["volumeGroups"]))
-            import time
-            time.sleep(5)
-            if success:
-                return jsonify({}), 204
-            return jsonify(msg), 500
-        if request.method.upper() == "POST":
-            print(data)
-            success, msg = create_volume_group(data["name"], list(data["blockDevices"]))
-            if success:
-                return jsonify({}), 204
-            return jsonify(msg), 400
-        return jsonify(get_all_lvm_info())
+        time.sleep(1)
+        return storage_pools.execute(request)
     except Exception as e:
         return jsonify({"message": f"Exception from backend: {str(e)}"}), 500
 
 
-@app.route("/block-devices", methods=["GET"])
+@app.route("/block-storage", methods=["GET", "POST", "DELETE", "PUT"])
 def get_unused_block_devices():
     try:
+        time.sleep(1)
+        return block_storage.execute(request)
+    except Exception as e:
+        return jsonify({"message": f"Exception from backend: {str(e)}"}), 500
+
+
+@app.route("/physical-devices", methods=["GET"])
+def get_unused_physical_devices():
+    try:
+        time.sleep(1)
         return jsonify(list_unused_block_devices())
+    except Exception as e:
+        return jsonify({"message": f"Exception from backend: {str(e)}"}), 500
+
+
+@app.route("/snapshots", methods=["GET", "POST", "DELETE", "PUT"])
+def deal_with_snapshots():
+    try:
+        time.sleep(1)
+        return snapshots.execute(request)
     except Exception as e:
         return jsonify({"message": f"Exception from backend: {str(e)}"}), 500
 
