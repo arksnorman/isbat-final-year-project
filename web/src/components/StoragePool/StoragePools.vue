@@ -1,6 +1,6 @@
 <script setup>
 import {onMounted, ref} from 'vue'
-import axios from "../axios.js"
+import axios from "../../axios.js"
 import CreateStoragePool from "./CreateStoragePool.vue";
 import ExtendPool from "./ExtendPool.vue";
 
