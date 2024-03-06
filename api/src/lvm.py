@@ -1,15 +1,60 @@
 import subprocess
 import time
-from src.utils import calculate_md5
+from src.utils import calculate_md5, turn_off_tgt_device, turn_on_tgt_device
 
 
 def restore_snapshot(vg, snapshot_name, original_lv_name):
     try:
+        # Turn off TGT service to release the device from any read/writes over ISCSI
+        turn_off_tgt_device(original_lv_name)
+        time.sleep(2)
+
+        # command deactivates the logical volume.
+        subprocess.run(["lvchange", "-an", f"{vg}/{original_lv_name}"], check=True)
+        time.sleep(1)
+
+        # Restore snapshot into the logical volume
         subprocess.run(["lvconvert", "--mergesnapshot", f"{vg}/{snapshot_name}"], check=True)
+        time.sleep(2)
+
+        # command is used to refresh the metadata of logical volumes in a Logical Volume Management (LVM) setup.
         subprocess.run(["lvchange", "--refresh", f"{vg}/{original_lv_name}"], check=True)
+        time.sleep(1)
+
+        # command activates (or enables) all inactive logical volumes in the system.
+        subprocess.run(["lvchange", "-ay", f"{vg}/{original_lv_name}"], check=True)
+        time.sleep(3)
+
+        # command is used to refresh the metadata of logical volumes in a Logical Volume Management (LVM) setup.
+        #  Just repeating it to be sure
+        subprocess.run(["lvchange", "--refresh", f"{vg}/{original_lv_name}"], check=True)
+        time.sleep(1)
+
+        for i in range(180):
+            if not lvm_has_merged(vg, original_lv_name):
+                time.sleep(0.9)
+            else:
+                break
+
+        turn_on_tgt_device(original_lv_name)
+        time.sleep(2)
+
         return True, None
     except Exception as e:
         return False, f"Error restoring snapshot: {e}"
+
+
+def lvm_has_merged(vg, lv):
+    try:
+        cmd = ['lvs', '--noheadings', '--nosuffix', '--separator', '#', '-o', 'lv_name,lv_merging', f"{vg}/{lv}"]
+        output = subprocess.check_output(cmd).decode('utf-8')
+        output = output.strip()
+
+        fields = output.split("#")
+        return str(fields[1].strip()).lower() != "merging"
+    except Exception as e:
+        print("Error checking if device is still merging: ", str(e))
+        return False
 
 
 def get_snapshots(lv):

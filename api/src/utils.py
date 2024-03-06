@@ -184,6 +184,28 @@ def remove_tgt_config_and_reload_tgt(dev_name):
         print("Failed remove config: ", str(e))
 
 
+def turn_off_tgt_device(dev_name):
+    try:
+        file_path = "/etc/tgt/conf.d/{}.{}"
+        original_path = file_path.format(dev_name, "conf")
+        backup_path = file_path.format(dev_name, "conf.bak")
+        os.system(f"mv {original_path} {backup_path}")
+        reload_tgt()
+    except Exception as e:
+        print(f"Failed to turn off tgt device [{dev_name}]: ", str(e))
+
+
+def turn_on_tgt_device(dev_name):
+    try:
+        file_path = "/etc/tgt/conf.d/{}.{}"
+        original_path = file_path.format(dev_name, "conf")
+        backup_path = file_path.format(dev_name, "conf.bak")
+        os.system(f"mv {backup_path} {original_path}")
+        reload_tgt()
+    except Exception as e:
+        print(f"Failed to turn on tgt device [{dev_name}]: ", str(e))
+
+
 def remove_non_alphanumeric_from_ends(string):
     # Using regular expression to remove non-alphanumeric characters from the beginning and end of the string
     return re.sub(r'^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$', '', string)
