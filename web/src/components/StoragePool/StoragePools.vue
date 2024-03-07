@@ -188,7 +188,9 @@ function triggerPoolExtension(name) {
     </div>
     <div class="col-md-4">
       <CreateStoragePool @reload-pools="getStoragePools()" v-if="isCreateStoragePool" />
-      <ExtendPool @reload-pools="getStoragePools()" :pool-name="poolToBeExtended" v-if="isExtendPool" />
+      <div v-if="isExtendPool" class="mt-5">
+        <ExtendPool @reload-pools="getStoragePools()" :pool-name="poolToBeExtended" />
+      </div>
     </div>
   </div>
 </template>

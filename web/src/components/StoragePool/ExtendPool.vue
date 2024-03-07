@@ -21,7 +21,7 @@ async function getBlockDevices() {
   blockDevices.value = []
   loadingBlockDevices.value = true
   try {
-    const res = await axios.get("/block-devices")
+    const res = await axios.get("/physical-devices")
     if (res.status === 200) {
       blockDevices.value = res.data
     } else {
