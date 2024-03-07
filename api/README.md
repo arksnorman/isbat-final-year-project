@@ -5,7 +5,7 @@ Welcome to the remote block storage app API with iSCSI
 This project only runs on Linux preferably `Ubuntu 22.04` and `above`
 
 
-> Please sure you are running as root user as this app will require root privileges to operate 
+> Please ensure that you are running as root user as this app will require root privileges to operate 
 
 Accomplish the above as follows:
 
@@ -19,16 +19,16 @@ Next thing to do here is to update the system as follows
 apt update
 ```
 
-That said, ensure you have the following packages installed. Dont worry, there is a command below to install all of them
-- [ ] git - You will need it to clone the repository 
-- [ ] lvm - Linux Logical Volume Manager to deal with storage
-- [ ] tgt - iscsi service to serve block devices over the network
-- [ ] python virtual environment `python3-venv` as at this time of making this `README`
-- [ ] Well networked environment to practice with (Virtualbox, VMware etc)
+That said, ensure that you have the following packages installed. Don't worry, there is a command below to install all of them
+- [x] git - You will need it to clone the repository 
+- [x] lvm - Linux Logical Volume Manager to deal with storage
+- [x] tgt - iscsi service to serve block storage devices over the network
+- [x] python virtual environment `python3-venv` at the time of making this `README`
+- [x] Well networked environment with internet to practice with (Virtualbox, VMware etc)
 
 
 
-> To run this project, you will need to perform the following commands
+> To run this project, you will need to perform a series of commands as follows
 
 First update the server  
 
@@ -36,51 +36,51 @@ First update the server
 apt-get upadte
 ```
 
-Install required system dependecies
+Install the required system dependencies
 ```bash
 apt install git python3-venv lvm2 tgt
 ```
 
-Clone repository
+Clone the repository to your computer
 ```bash
 git clone https://github.com/arksnorman/isbat-final-year-project.git
 ```
 
-Switc to the `api` directory in the project
+Switch to the `api` directory in the project
 
 ```bash
 cd isbat-final-year-project/api
 ```
 
-Create a virtual environemnt for the API
+Create a virtual environment for the API
 ```bash
 python3 -m venv .venv
 ```
 
-Activate the python environment
+Activate the new python environment
 ```bash
 source .venv/bin/activate
 ```
 
-Install project requirements/libraries
+Install all the project requirements/libraries
 ```bash
 pip install -r requirements.txt
 ```
 
-Prep the virtual storage on the system for testing purposes. This will take some time depending your system speed as in the background, the system is creating virtual storage devices (Linux Loop Devices)
+Prep the virtual storage on the system for testing purposes. This will take some time depending on your system speed. In the background, the system is creating virtual storage devices (Linux Loop Devices)
 ```bash
 python prep-dev.py
 ```
 
-Next step is to create a `.env` file out of the `.env.example` file. This file contains environment variables use by the application. So by default, the `.env` is not available in the project directory and you have create it manually
+Next step is to create a `.env` file out of the `.env.example` file. This file contains environment variables used by the application. By default, the `.env` is not available in the project directory, and you will have to create it manually as so
 ```bash
 cp .env.example .env
 ```
-> This file contains environment variables to be use by the app like `EXCLUDED_DEVICES` which contains a comma seperated list of `CORE` linux block devices to not be used by the application while its performing its operations. Disks in this lisk can include your root partition, data back disk or partion etc
+> This file contains environment variables to be used by the app like `EXCLUDED_DEVICES` which contains a comma seperated list of `CORE` linux physical block devices that are not to be included in the app operations. Disks in this list may include your root partition, data backup disk etc
 
 And finally start the API
 ```bash
 python3 app.py
 ```
 
-Enjoy :)
+Enjoy :ristas:
