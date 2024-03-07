@@ -1,5 +1,5 @@
 from flask import Request, jsonify
-from src.lvm import create_volume_group, extend_volume_group, delete_volume_group_forcefully, get_logical_volumes, \
+from src.lvm import get_logical_volumes, \
     delete_logical_volume_forcefully, has_enough_space, create_logical_volume, get_logical_volume_details
 from src.utils import get_all_vg_info, create_tgt_config, reload_tgt, remove_tgt_config_and_reload_tgt
 

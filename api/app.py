@@ -53,5 +53,15 @@ def deal_with_snapshots():
         return jsonify({"message": f"Exception from backend: {str(e)}"}), 500
 
 
+# @app.route('/snapshot/download')
+# def download_file():
+#     # Assuming the file you want to serve is named 'example.txt' and located in the same directory as your Flask app
+#     file_path = 'example.txt'
+#     # Set the name that will be used when the file is downloaded
+#     file_name = 'example.txt'
+#     # Send the file to the client
+#     return send_file(file_path, as_attachment=True, attachment_filename=file_name)
+
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", debug=True)
