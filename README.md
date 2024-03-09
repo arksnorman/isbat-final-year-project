@@ -1,4 +1,4 @@
-Help full links
+Helpful links
 ---------------
 > [iscsi config site alternate](https://www.server-world.info/en/note?os=Ubuntu_22.04&p=iscsi&f=2)  
 > [iscsi config site main](https://linux.die.net/man/5/targets.conf)  
